@@ -1,0 +1,96 @@
+{{- $fullName := include "springboot-web-application.fullname" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "springboot-web-application.fullname" . }}
+  labels:
+    {{- include "springboot-web-application.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "springboot-web-application.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "springboot-web-application.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "springboot-web-application.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          env:
+          {{- if .Values.configMap }}
+          {{- range $key, $value := .Values.configMap }}
+          - name: {{$key}}
+            valueFrom:
+              configMapKeyRef:
+                key: {{$key}}
+                name: '{{ $fullName }}-configmap'
+          {{- end }} 
+          {{- end }}
+          {{- if .Values.secretKey }}
+          {{- range $key, $value := .Values.secretKey }}
+          - name: {{$key}}
+            valueFrom:
+              secretKeyRef:
+                key: {{$key}}
+                name: '{{ $fullName }}-secrets'
+          {{- end }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+          - mountPath: /tmp
+            name: tmp
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{.Values.health.healthpath}}
+              port: {{.Values.health.containerport }}
+            timeoutSeconds: {{ .Values.health.timeout_seconds }}
+            periodSeconds: {{ .Values.health.period_seconds }}
+            successThreshold: {{ .Values.health.success_threshold }}
+            failureThreshold: {{ .Values.health.failure_threshold }}
+          readinessProbe:
+            httpGet:
+              path: {{.Values.health.healthpath}}
+              port: {{ .Values.health.containerport }}
+            initialDelaySeconds: {{ .Values.health.readiness_initialdelay }}
+            timeoutSeconds: {{ .Values.health.timeout_seconds }}
+            periodSeconds: {{ .Values.health.period_seconds }}
+            successThreshold: {{ .Values.health.success_threshold }}
+            failureThreshold: {{ .Values.health.failure_threshold }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+      - emptyDir: {}
+        name: tmp
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
