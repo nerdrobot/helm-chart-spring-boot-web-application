@@ -1,0 +1,82 @@
+replicaCount: 1
+
+image:
+  repository: mrao50/demo-app
+  pullPolicy: IfNotPresent
+  tag: "1.0.3"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: "springboot-web-application"
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+health:
+  containerport: "8080"
+  healthpath: "/actuator/health"
+  initialDelay: "60"
+  readiness_initialdelay: "60"
+  timeout_seconds: "10"
+  period_seconds: "60"
+  success_threshold: "1"
+  failure_threshold: "5"
+
+
+configMap:
+  FINHUB_API_URL_VALUE: "https://finnhub.io/api/v1/"
+
+secretKey: 
+  FINHUB_API_KEY_VALUE: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 100
+  runAsUser: 101
+
+securityContext:
+   capabilities:
+     drop:
+     - NET_RAW
+     - CHOWN
+   allowPrivilegeEscalation: false
+   readOnlyRootFilesystem: true
+   privileged: false
+   runAsUser: 100
+   runAsGroup: 101
+   runAsNonRoot: true
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+
+resources: 
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
